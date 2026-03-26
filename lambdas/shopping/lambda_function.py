@@ -399,7 +399,7 @@ def get_meal_plan(args):
         IndexName="byUserID",
         KeyConditionExpression=boto3.dynamodb.conditions.Key("userID").eq(user["user_id"])
     )
-    activity = resp.get("Items", [None])[0]
+    activity = (resp.get("Items") or [None])[0] if resp.get("Items") else None
     if not activity:
         return {"meals": {}, "night_off": {}}
     meals = json.loads(activity.get("selectedMenuItems") or "{}")
@@ -429,7 +429,7 @@ def select_meals(args):
         IndexName="byUserID",
         KeyConditionExpression=boto3.dynamodb.conditions.Key("userID").eq(user["user_id"])
     )
-    existing = resp.get("Items", [None])[0]
+    existing = (resp.get("Items") or [None])[0] if resp.get("Items") else None
     if existing:
         meals = json.loads(existing.get("selectedMenuItems") or "{}")
         nights = json.loads(existing.get("nightOffDays") or "{}")
