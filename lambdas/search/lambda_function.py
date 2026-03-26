@@ -10,6 +10,29 @@ from boto3.dynamodb.conditions import Attr
 ROLE_ARN = "arn:aws:iam::970547358447:role/IsengardAccount-DynamoDBAccess"
 TABLE_NAME = "MenuItemData-ryvykzwfevawxbpf5nmynhgtea-dev"
 DB_REGION = "us-west-1"
+IMAGE_BUCKET = "amplify-ezmealsnew-menu-item-imageseb66c-dev"
+IMAGE_PREFIX = "public/menu-item-images/"
+
+_creds_cache = {}
+
+def _get_creds():
+    if not _creds_cache:
+        creds = boto3.client("sts").assume_role(RoleArn=ROLE_ARN, RoleSessionName="mcp-search")["Credentials"]
+        _creds_cache.update(creds)
+    return _creds_cache
+
+
+def resolve_image_url(relative_path):
+    if not relative_path:
+        return ""
+    filename = relative_path.split("/")[-1]
+    creds = _get_creds()
+    s3 = boto3.client("s3", region_name=DB_REGION,
+        aws_access_key_id=creds["AccessKeyId"],
+        aws_secret_access_key=creds["SecretAccessKey"],
+        aws_session_token=creds["SessionToken"])
+    return s3.generate_presigned_url("get_object",
+        Params={"Bucket": IMAGE_BUCKET, "Key": IMAGE_PREFIX + filename}, ExpiresIn=3600)
 
 TOOLS = [
     {
@@ -36,8 +59,7 @@ TOOLS = [
 
 
 def get_table():
-    sts = boto3.client("sts")
-    creds = sts.assume_role(RoleArn=ROLE_ARN, RoleSessionName="mcp-search")["Credentials"]
+    creds = _get_creds()
     dynamodb = boto3.resource(
         "dynamodb", region_name=DB_REGION,
         aws_access_key_id=creds["AccessKeyId"],
@@ -69,7 +91,7 @@ def to_summary(item):
         "cuisineType": item.get("cuisineType", ""),
         "prepTime": int(item.get("prepTime", 0)),
         "cookTime": int(item.get("cookTime", 0)),
-        "imageURL": item.get("imageURL", ""),
+        "imageURL": resolve_image_url(item.get("imageURL", "")),
         "glutenFree": item.get("glutenFree", False),
         "vegetarian": item.get("vegetarian", False),
         "isQuick": item.get("isQuick", False),

@@ -10,6 +10,29 @@ from decimal import Decimal
 ROLE_ARN = "arn:aws:iam::970547358447:role/IsengardAccount-DynamoDBAccess"
 TABLE_NAME = "MenuItemData-ryvykzwfevawxbpf5nmynhgtea-dev"
 DB_REGION = "us-west-1"
+IMAGE_BUCKET = "amplify-ezmealsnew-menu-item-imageseb66c-dev"
+IMAGE_PREFIX = "public/menu-item-images/"
+
+_creds_cache = {}
+
+def _get_creds():
+    if not _creds_cache:
+        creds = boto3.client("sts").assume_role(RoleArn=ROLE_ARN, RoleSessionName="mcp-recipes")["Credentials"]
+        _creds_cache.update(creds)
+    return _creds_cache
+
+
+def resolve_image_url(relative_path):
+    if not relative_path:
+        return ""
+    filename = relative_path.split("/")[-1]
+    creds = _get_creds()
+    s3 = boto3.client("s3", region_name=DB_REGION,
+        aws_access_key_id=creds["AccessKeyId"],
+        aws_secret_access_key=creds["SecretAccessKey"],
+        aws_session_token=creds["SessionToken"])
+    return s3.generate_presigned_url("get_object",
+        Params={"Bucket": IMAGE_BUCKET, "Key": IMAGE_PREFIX + filename}, ExpiresIn=3600)
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -20,8 +43,7 @@ class DecimalEncoder(json.JSONEncoder):
 
 
 def get_table():
-    sts = boto3.client("sts")
-    creds = sts.assume_role(RoleArn=ROLE_ARN, RoleSessionName="mcp-recipes")["Credentials"]
+    creds = _get_creds()
     dynamodb = boto3.resource(
         "dynamodb", region_name=DB_REGION,
         aws_access_key_id=creds["AccessKeyId"],
@@ -59,7 +81,7 @@ def get_recipe(args):
         "prepTime": int(item.get("prepTime", 0)),
         "cookTime": int(item.get("cookTime", 0)),
         "servings": str(item.get("servings", "")),
-        "imageURL": item.get("imageURL", ""),
+        "imageURL": resolve_image_url(item.get("imageURL", "")),
         "ingredients": item.get("ingredients", []),
         "ingredient_objects": ingredient_objects,
         "instructions": item.get("instructions", []),
@@ -102,6 +124,7 @@ def get_recommended_sides(args):
                 "id": side.get("id", ""),
                 "title": side.get("title", ""),
                 "description": side.get("description", ""),
+                "imageURL": resolve_image_url(side.get("imageURL", "")),
                 "prepTime": int(side.get("prepTime", 0)),
                 "cookTime": int(side.get("cookTime", 0)),
             })
