@@ -24,10 +24,13 @@ def validate_token(auth_token):
     try:
         resp = get_cognito().get_user(AccessToken=auth_token)
         email = ""
+        sub = ""
         for attr in resp.get("UserAttributes", []):
             if attr["Name"] == "email":
                 email = attr["Value"]
-        return {"username": resp["Username"], "email": email}
+            elif attr["Name"] == "sub":
+                sub = attr["Value"]
+        return {"username": resp["Username"], "email": email, "user_id": sub or resp["Username"]}
     except Exception:
         return None
 

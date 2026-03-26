@@ -1,17 +1,23 @@
 """
 EZ Meals MCP — Shopping Lambda
-Tools: get_shopping_list, create_instacart_cart, create_recipe_page
+Tools: get_shopping_list, create_instacart_cart, create_recipe_page,
+       get_weekly_staples, add_weekly_staples, remove_weekly_staples
 Consolidates ingredients across recipes and creates Instacart checkout/recipe page URLs.
 """
 import json
 import os
+import sys
 import boto3
 import urllib.request
 from decimal import Decimal
 from fractions import Fraction
 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'shared'))
+from auth_helper import require_auth
+
 ROLE_ARN = "arn:aws:iam::970547358447:role/IsengardAccount-DynamoDBAccess"
 TABLE_NAME = "MenuItemData-ryvykzwfevawxbpf5nmynhgtea-dev"
+STAPLES_TABLE = "WeeklyStaple-ryvykzwfevawxbpf5nmynhgtea-dev"
 DB_REGION = "us-west-1"
 IMAGE_BUCKET = "amplify-ezmealsnew-menu-item-imageseb66c-dev"
 IMAGE_PREFIX = "public/menu-item-images/"
@@ -276,6 +282,88 @@ def create_recipe_page(args):
     return result
 
 
+def get_staples_table():
+    creds = _get_creds()
+    dynamodb = boto3.resource("dynamodb", region_name=DB_REGION,
+        aws_access_key_id=creds["AccessKeyId"],
+        aws_secret_access_key=creds["SecretAccessKey"],
+        aws_session_token=creds["SessionToken"])
+    return dynamodb.Table(STAPLES_TABLE)
+
+
+def get_weekly_staples(args):
+    user, err = require_auth(args)
+    if err:
+        return err
+    table = get_staples_table()
+    resp = table.query(
+        IndexName="byUserID",
+        KeyConditionExpression=boto3.dynamodb.conditions.Key("userID").eq(user["user_id"])
+    )
+    items = [{"id": s["id"], "name": s["itemName"], "selected": s.get("isSelected", False)}
+             for s in resp.get("Items", [])]
+    return {"staples": items, "count": len(items)}
+
+
+def add_weekly_staples(args):
+    user, err = require_auth(args)
+    if err:
+        return err
+    items = _parse_csv(args.get("items", ""))
+    if not items:
+        return {"error": "items is required — comma-separated list of grocery items"}
+    table = get_staples_table()
+    import uuid
+    from datetime import datetime
+    now = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    added = []
+    for item_name in items:
+        cleaned = item_name.strip()
+        if not cleaned:
+            continue
+        table.put_item(Item={
+            "id": str(uuid.uuid4()),
+            "userID": user["user_id"],
+            "itemName": cleaned,
+            "isSelected": False,
+            "createdAt": now,
+            "updatedAt": now,
+        })
+        added.append(cleaned)
+    return {"added": added, "count": len(added)}
+
+
+def remove_weekly_staples(args):
+    user, err = require_auth(args)
+    if err:
+        return err
+    items = _parse_csv(args.get("items", ""))
+    if not items:
+        return {"error": "items is required — comma-separated list of grocery items to remove"}
+    table = get_staples_table()
+    resp = table.query(
+        IndexName="byUserID",
+        KeyConditionExpression=boto3.dynamodb.conditions.Key("userID").eq(user["user_id"])
+    )
+    staples = resp.get("Items", [])
+    removed, not_found = [], []
+    for item_name in items:
+        search = item_name.strip().lower()
+        match = next((s for s in staples if s["itemName"].lower() == search), None)
+        if not match:
+            match = next((s for s in staples if search in s["itemName"].lower()), None)
+        if match:
+            table.delete_item(Key={"id": match["id"]})
+            removed.append(match["itemName"])
+            staples = [s for s in staples if s["id"] != match["id"]]
+        else:
+            not_found.append(item_name.strip())
+    result = {"removed": removed, "count": len(removed)}
+    if not_found:
+        result["not_found"] = not_found
+    return result
+
+
 # ── Handler ──
 
 def lambda_handler(event, context):
@@ -298,6 +386,9 @@ def lambda_handler(event, context):
         "get_shopping_list": get_shopping_list,
         "create_instacart_cart": create_instacart_cart,
         "create_recipe_page": create_recipe_page,
+        "get_weekly_staples": get_weekly_staples,
+        "add_weekly_staples": add_weekly_staples,
+        "remove_weekly_staples": remove_weekly_staples,
     }
     result = handlers.get(tool_name, lambda a: {"error": f"Unknown tool: {tool_name}"})(args)
     return {"content": [{"type": "text", "text": json.dumps(result, cls=DecimalEncoder, default=str)}]}

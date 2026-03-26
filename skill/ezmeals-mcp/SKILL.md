@@ -17,6 +17,11 @@ description: Meal planning and grocery ordering via EZ Meals MCP server. Use whe
 - `create_instacart_cart` — recipe_ids, title, exclude_categories, exclude_ingredients, additional_items → Instacart checkout URL
 - `create_recipe_page` — recipe_id, include_sides, exclude_categories → Instacart page with photo, instructions, and shoppable ingredients
 
+### Authenticated Tools (require login)
+- `get_weekly_staples` — auth_token → user's weekly grocery staples list
+- `add_weekly_staples` — auth_token, items → add items to weekly staples
+- `remove_weekly_staples` — auth_token, items → remove items from weekly staples
+
 ## Flow (follow in order — do NOT skip steps)
 
 ### Step 1: Narrow Down
@@ -45,6 +50,13 @@ If yes: use `exclude_categories: "Seasonings,Pantry Staples"` on the order.
 - Multiple recipes / weekly plan: `create_instacart_cart` (consolidated cart, duplicates auto-merged)
 
 Send the link and you're done.
+
+### Weekly Staples (logged-in users)
+If the user mentions weekly groceries, staples, or regular items:
+1. Ask them to `login` if they haven't already
+2. `get_weekly_staples` to show their saved list
+3. They can add/remove items with `add_weekly_staples` / `remove_weekly_staples`
+4. Include staples in an Instacart cart using `additional_items` on `create_instacart_cart`
 
 ## Rules
 - Present mains and sides TOGETHER — never show a main alone then ask about sides separately
