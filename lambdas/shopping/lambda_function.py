@@ -12,8 +12,12 @@ import urllib.request
 from decimal import Decimal
 from fractions import Fraction
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'shared'))
-from auth_helper import require_auth
+# In Lambda, auth_helper.py is co-located; locally it's in shared/
+try:
+    from auth_helper import require_auth
+except ImportError:
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'shared'))
+    from auth_helper import require_auth
 
 ROLE_ARN = "arn:aws:iam::970547358447:role/IsengardAccount-DynamoDBAccess"
 TABLE_NAME = "MenuItemData-ryvykzwfevawxbpf5nmynhgtea-dev"
