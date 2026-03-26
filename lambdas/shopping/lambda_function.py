@@ -10,7 +10,7 @@ import urllib.parse
 from decimal import Decimal
 from fractions import Fraction
 
-ROLE_ARN = "arn:aws:iam::970547358447:role/IsengardAccount-DynamoDBAccess"
+ROLE_ARN = "arn:aws:iam::970547358447:role/CrossAccountDynamoDBWriter"
 TABLE_NAME = "MenuItemData-ryvykzwfevawxbpf5nmynhgtea-dev"
 DB_REGION = "us-west-1"
 INSTACART_API_KEY = "keys.AVsISDFfLH8qddxczMqtWiVNtHkp8Y69OKCgWrrNJJI"

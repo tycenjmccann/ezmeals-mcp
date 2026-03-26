@@ -7,7 +7,7 @@ import json
 import boto3
 from boto3.dynamodb.conditions import Attr
 
-ROLE_ARN = "arn:aws:iam::970547358447:role/IsengardAccount-DynamoDBAccess"
+ROLE_ARN = "arn:aws:iam::970547358447:role/CrossAccountDynamoDBWriter"
 TABLE_NAME = "MenuItemData-ryvykzwfevawxbpf5nmynhgtea-dev"
 DB_REGION = "us-west-1"
 
