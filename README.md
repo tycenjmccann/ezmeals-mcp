@@ -63,3 +63,23 @@ MCP Client → AgentCore Gateway (us-west-2) → Lambda Functions → DynamoDB +
 ## Status
 
 ✅ **Live** — All tools operational, zero auth required.
+
+## Agent Skill
+
+A ready-made [AgentSkills](https://agentskills.io) file lives at `skill/ezmeals-mcp/SKILL.md`. It teaches any AI agent how to use this server — when to call each tool, how to filter ingredients, and how to guide users to checkout.
+
+Install it into your tool of choice:
+
+```bash
+# Claude Code
+ln -s ../../skill/ezmeals-mcp .claude/skills/ezmeals-mcp
+
+# Cursor
+ln -s ../../skill/ezmeals-mcp .cursor/skills/ezmeals-mcp
+
+# Kiro
+ln -s ../../skill/ezmeals-mcp .kiro/skills/ezmeals-mcp
+
+# OpenClaw
+ln -s skill/ezmeals-mcp skills/ezmeals-mcp
+```

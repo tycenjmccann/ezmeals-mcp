@@ -188,7 +188,7 @@ def create_instacart_cart(args):
         return {"error": "recipe_ids is required"}
     title = args.get("title", "EZ Meals Shopping List")
     ingredients = get_ingredients_for_recipes(recipe_ids)
-    consolidated = consolidate_ingredients(ingredients, _parse_csv(args.get("exclude_categories", "")))
+    consolidated = consolidate_ingredients(ingredients, _parse_csv(args.get("exclude_categories", "")), _parse_csv(args.get("exclude_ingredients", "")))
     line_items = _build_line_items(consolidated, _parse_csv(args.get("additional_items", "")))
     data, err = _call_instacart("products/products_link", {
         "title": title, "link_type": "shopping_list",
