@@ -4,6 +4,7 @@ Tools: get_shopping_list, create_instacart_cart
 Consolidates ingredients across recipes and creates Instacart checkout URLs.
 """
 import json
+import os
 import boto3
 import urllib.request
 import urllib.parse
@@ -13,9 +14,9 @@ from fractions import Fraction
 ROLE_ARN = "arn:aws:iam::970547358447:role/CrossAccountDynamoDBWriter"
 TABLE_NAME = "MenuItemData-ryvykzwfevawxbpf5nmynhgtea-dev"
 DB_REGION = "us-west-1"
-INSTACART_API_KEY = "keys.AVsISDFfLH8qddxczMqtWiVNtHkp8Y69OKCgWrrNJJI"
-INSTACART_BASE_URL = "https://connect.dev.instacart.tools/idp/v1"
-IMPACT_PARTNER_ID = ""
+INSTACART_API_KEY = os.environ.get("INSTACART_API_KEY", "")
+INSTACART_BASE_URL = os.environ.get("INSTACART_BASE_URL", "https://connect.dev.instacart.tools/idp/v1")
+IMPACT_PARTNER_ID = os.environ.get("IMPACT_PARTNER_ID", "")
 
 
 class DecimalEncoder(json.JSONEncoder):
