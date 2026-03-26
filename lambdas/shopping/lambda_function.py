@@ -199,7 +199,19 @@ def create_instacart_cart(args):
     title = args.get("title", "EZ Meals Shopping List")
     ingredients = get_ingredients_for_recipes(recipe_ids)
     consolidated = consolidate_ingredients(ingredients, _parse_csv(args.get("exclude_categories", "")), _parse_csv(args.get("exclude_ingredients", "")))
-    line_items = _build_line_items(consolidated, _parse_csv(args.get("additional_items", "")))
+    additional = _parse_csv(args.get("additional_items", ""))
+    # Auto-include weekly staples if requested
+    if args.get("include_staples"):
+        user, err = require_auth(args)
+        if err:
+            return err
+        staples_table = get_staples_table()
+        resp = staples_table.query(
+            IndexName="byUserID",
+            KeyConditionExpression=boto3.dynamodb.conditions.Key("userID").eq(user["user_id"])
+        )
+        additional += [s["itemName"] for s in resp.get("Items", [])]
+    line_items = _build_line_items(consolidated, additional)
     data, err = _call_instacart("products/products_link", {
         "title": title, "link_type": "shopping_list",
         "line_items": line_items, "landing_page_configuration": {"enable_pantry_items": True}})
