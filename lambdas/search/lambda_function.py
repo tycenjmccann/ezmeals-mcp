@@ -2,14 +2,10 @@
 EZ Meals MCP — Search Lambda
 Tools: search_recipes, browse_cuisines
 Scans MenuItemData DynamoDB table with filters.
-Guest access: max 5 results. Authenticated: unlimited.
 """
 import json
 import boto3
 from boto3.dynamodb.conditions import Attr
-from auth_helper import validate_token
-
-GUEST_MAX_RESULTS = 5
 
 ROLE_ARN = "arn:aws:iam::970547358447:role/IsengardAccount-DynamoDBAccess"
 TABLE_NAME = "MenuItemData-ryvykzwfevawxbpf5nmynhgtea-dev"
@@ -84,21 +80,13 @@ def to_summary(item):
 
 
 def search_recipes(args):
-    # Check auth — guests get capped results
-    auth_token = args.get("auth_token", "")
-    is_authenticated = bool(validate_token(auth_token)) if auth_token else False
-    
     table = get_table()
     query = args.get("query", "").lower().strip()
     cuisine = args.get("cuisine", "")
     time_filter = args.get("time", "")
     dietary = args.get("dietary", "")
     cook_method = args.get("cookMethod", "")
-    limit = args.get("limit", 10)
-    
-    # Enforce guest limit
-    if not is_authenticated:
-        limit = min(int(limit), GUEST_MAX_RESULTS)
+    limit = int(args.get("limit", 10))
 
     # Build filter expression
     filters = []
@@ -135,12 +123,7 @@ def search_recipes(args):
                  or any(query in (ing or "").lower() for ing in (i.get("ingredients") or []))]
 
     results = [to_summary(i) for i in items[:limit]]
-    resp = {"recipes": results, "total": len(results)}
-    if not is_authenticated:
-        resp["guest_mode"] = True
-        resp["results_capped_at"] = GUEST_MAX_RESULTS
-        resp["tip"] = "Create a free EZ Meals account for unlimited access — it's free forever. Use the signup tool."
-    return resp
+    return {"recipes": results, "total": len(results)}
 
 
 def browse_cuisines(args):
