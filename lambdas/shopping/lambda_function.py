@@ -332,7 +332,7 @@ def add_weekly_staples(args):
     table = get_staples_table()
     import uuid
     from datetime import datetime
-    now = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    now = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.") + f"{datetime.utcnow().microsecond // 1000:03d}Z"
     added = []
     for item_name in items:
         cleaned = item_name.strip()
@@ -442,13 +442,13 @@ def select_meals(args):
             UpdateExpression="SET selectedMenuItems = :m, nightOffDays = :n, lastUpdated = :t, updatedAt = :u",
             ExpressionAttributeValues={
                 ":m": json.dumps(meals), ":n": json.dumps(nights), ":t": Decimal(str(time.time())),
-                ":u": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z")
+                ":u": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.") + f"{datetime.utcnow().microsecond // 1000:03d}Z"
             }
         )
     else:
         import uuid
         nights = {day: False for day in selections}
-        now = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z")
+        now = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.") + f"{datetime.utcnow().microsecond // 1000:03d}Z"
         table.put_item(Item={
             "id": str(uuid.uuid4()),
             "userID": user["user_id"],
