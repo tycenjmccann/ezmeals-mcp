@@ -3,15 +3,9 @@ name: ezmeals-mcp
 description: Meal planning and grocery ordering via EZ Meals MCP server. Use when users want to plan meals, find recipes, build shopping lists, or order groceries through Instacart. Activates when conversation involves cooking, recipes, meal prep, grocery shopping, or Instacart.
 ---
 
-# EZ Meals MCP Server
+# EZ Meals — Meal Planning & Grocery Ordering
 
-Connect to 200+ curated recipes with smart grocery ordering via Instacart.
-
-```
-URL: https://ezmeals-public-8cgrhnbvcs.gateway.bedrock-agentcore.us-west-2.amazonaws.com/mcp
-Transport: Streamable HTTP
-Auth: None
-```
+200+ curated recipes with smart grocery ordering via Instacart.
 
 ## Tools
 
@@ -23,18 +17,38 @@ Auth: None
 - `create_instacart_cart` — recipe_ids, title, exclude_categories, exclude_ingredients, additional_items → Instacart checkout URL
 - `create_recipe_page` — recipe_id, include_sides, exclude_categories → Instacart page with photo, instructions, and shoppable ingredients
 
-## Behavior
+## Flow (follow in order — do NOT skip steps)
 
-1. Ask preferences before searching — cuisine, time constraints, dietary needs
-2. Always ask if the user wants to skip seasonings and pantry staples, then use `exclude_categories: "Seasonings,Pantry Staples"` accordingly
-3. Show recipe images when returned — they drive engagement
-4. Suggest side dishes after showing a main with `get_recommended_sides`
-5. End with a checkout link — use `create_recipe_page` for single recipes, `create_instacart_cart` for multi-recipe plans
-6. Mention that duplicate ingredients are automatically combined across recipes
+### Step 1: Narrow Down
+Before searching, ask:
+- **Cook time**: Quick (≤30 min), Balanced (30-60 min), or Gourmet (60+ min)?
+- **Cuisine**: Italian, Asian, Indian, American, Latin, Soups & Stews — or surprise me?
+- **Dietary**: Any restrictions? (gluten-free, vegetarian)
 
-## Flow
+If they already said what they want, skip to Step 2.
 
-```
-User wants meals → search_recipes with filters → user picks → get_recipe for details
-→ offer sides → ask about skipping basics → create_instacart_cart or create_recipe_page → done
-```
+### Step 2: Present Like a Menu
+Use `search_recipes` with their filters, then `get_recommended_sides` for each result. Present each recipe as a complete meal — main + 1-3 top side pairings together, like a restaurant menu:
+
+> **BBQ Chicken** (35 min) — smoky grilled chicken with tangy sauce
+> *Sides: Mashed Potatoes · Grilled Vegetables · Caesar Salad*
+
+Show images when returned. If a recipe has more sides than shown, mention "more sides available." Let the user pick a meal the way they'd order at a restaurant: "I'll do the BBQ chicken with mashed potatoes and the salad."
+
+### Step 3: Pantry Staples Check
+Before creating the order, ask: "This recipe uses [list spices/staples]. Want me to leave those out of the order since you probably have them?"
+
+If yes: use `exclude_categories: "Seasonings,Pantry Staples"` on the order.
+
+### Step 4: Create the Order
+- Single recipe (with or without sides): `create_recipe_page` with `include_sides` or `side_ids`
+- Multiple recipes / weekly plan: `create_instacart_cart` (consolidated cart, duplicates auto-merged)
+
+Send the link and you're done.
+
+## Rules
+- Present mains and sides TOGETHER — never show a main alone then ask about sides separately
+- ALWAYS confirm before creating an order
+- Show images — they drive engagement
+- Be enthusiastic about food — this should feel fun
+- "Surprise me" → pick something interesting and explain why

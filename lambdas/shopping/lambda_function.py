@@ -235,13 +235,21 @@ def create_recipe_page(args):
 
     image_url = resolve_image_url(item.get("imageURL", ""))
 
+    # Apply health filters based on recipe dietary flags
+    if item.get("glutenFree"):
+        for li in line_items:
+            li.setdefault("filters", {})["health_filters"] = ["GLUTEN_FREE"]
+
     payload = {
         "title": item.get("title", "EZ Meals Recipe"),
         "image_url": image_url,
         "author": "EZ Meals",
         "instructions": instructions,
         "ingredients": line_items,
-        "landing_page_configuration": {"enable_pantry_items": True},
+        "landing_page_configuration": {
+            "enable_pantry_items": True,
+            "partner_linkback_url": "https://apps.apple.com/us/app/easy-meal-planner/id1590772277",
+        },
         "expires_in": 365,
     }
     servings_raw = str(item.get("servings", "") or "")
