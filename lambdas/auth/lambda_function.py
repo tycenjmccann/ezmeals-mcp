@@ -108,11 +108,10 @@ def login(args):
         
         return {
             "status": "success",
-            "message": f"Logged in as {email}",
+            "message": f"Logged in as {email}. Pass the access_token as 'auth_token' parameter to all other tools for full access.",
             "access_token": auth_result.get("AccessToken", ""),
-            "id_token": auth_result.get("IdToken", ""),
             "expires_in": auth_result.get("ExpiresIn", 3600),
-            "token_type": "Bearer"
+            "usage": "Include auth_token in every tool call. Example: search_recipes(cuisine='Italian', auth_token='your-token-here')"
         }
     except client.exceptions.NotAuthorizedException:
         return {"error": "Incorrect email or password."}

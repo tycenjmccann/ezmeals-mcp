@@ -2,12 +2,14 @@
 EZ Meals MCP — Recipes Lambda
 Tools: get_recipe, get_recommended_sides
 Gets full recipe details and resolves side dish recommendations.
+Requires authentication — guests are blocked.
 """
 import json
 import boto3
 from decimal import Decimal
+from auth_helper import require_auth
 
-ROLE_ARN = "arn:aws:iam::970547358447:role/CrossAccountDynamoDBWriter"
+ROLE_ARN = "arn:aws:iam::970547358447:role/IsengardAccount-DynamoDBAccess"
 TABLE_NAME = "MenuItemData-ryvykzwfevawxbpf5nmynhgtea-dev"
 DB_REGION = "us-west-1"
 
@@ -126,9 +128,13 @@ def lambda_handler(event, context):
     if isinstance(args, str):
         args = json.loads(args)
     
-    logging.info(f"TOOL: {tool_name}, ARGS: {args}")
+    logging.info(f"TOOL: {tool_name}")
 
-    if tool_name == "get_recipe":
+    # All recipe tools require authentication
+    user, auth_error = require_auth(args)
+    if auth_error:
+        result = auth_error
+    elif tool_name == "get_recipe":
         result = get_recipe(args)
     elif tool_name == "get_recommended_sides":
         result = get_recommended_sides(args)

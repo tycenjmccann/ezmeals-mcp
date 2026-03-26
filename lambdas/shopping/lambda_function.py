@@ -2,6 +2,7 @@
 EZ Meals MCP — Shopping Lambda
 Tools: get_shopping_list, create_instacart_cart
 Consolidates ingredients across recipes and creates Instacart checkout URLs.
+Requires authentication — guests are blocked.
 """
 import json
 import os
@@ -10,8 +11,9 @@ import urllib.request
 import urllib.parse
 from decimal import Decimal
 from fractions import Fraction
+from auth_helper import require_auth
 
-ROLE_ARN = "arn:aws:iam::970547358447:role/CrossAccountDynamoDBWriter"
+ROLE_ARN = "arn:aws:iam::970547358447:role/IsengardAccount-DynamoDBAccess"
 TABLE_NAME = "MenuItemData-ryvykzwfevawxbpf5nmynhgtea-dev"
 DB_REGION = "us-west-1"
 INSTACART_API_KEY = os.environ.get("INSTACART_API_KEY", "")
@@ -255,9 +257,13 @@ def lambda_handler(event, context):
     if isinstance(args, str):
         args = json.loads(args)
     
-    logging.info(f"TOOL: {tool_name}, ARGS: {json.dumps(args, default=str)}")
+    logging.info(f"TOOL: {tool_name}")
 
-    if tool_name == "get_shopping_list":
+    # All shopping tools require authentication
+    user, auth_error = require_auth(args)
+    if auth_error:
+        result = auth_error
+    elif tool_name == "get_shopping_list":
         result = get_shopping_list(args)
     elif tool_name == "create_instacart_cart":
         result = create_instacart_cart(args)
