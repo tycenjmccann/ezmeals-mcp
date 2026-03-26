@@ -40,6 +40,8 @@ Once they log into the app with the same email, everything the agent planned is 
 - `get_weekly_staples` — user's saved grocery staples
 - `add_weekly_staples` — items → add to weekly staples
 - `remove_weekly_staples` — items → remove from weekly staples
+- `get_meal_plan` — user's current weekly meal selections (which recipe on which day)
+- `select_meals` — selections (JSON: {"Monday": "recipe-id"}) → save meals to user's weekly plan. **These appear in the EZ Meals app.**
 
 ## Flow (follow in order — do NOT skip steps)
 
@@ -69,10 +71,11 @@ Before creating the order, ask: "This recipe uses [list spices/staples]. Want me
 
 If yes: use `exclude_categories: "Seasonings,Pantry Staples"` on the order.
 
-### Step 5: Create the Order
-- Single recipe (with or without sides): `create_recipe_page` with `include_sides` or `side_ids`
+### Step 5: Save & Order
+- Use `select_meals` to save the chosen recipes to the user's weekly plan: `select_meals(auth_token, selections={"Monday": "chicken-tacos", "Wednesday": "spaghetti", "Friday": "steak-kebabs"})`
+- Single recipe: `create_recipe_page` with `include_sides` or `side_ids`
 - Multiple recipes / weekly plan: `create_instacart_cart` with `include_staples=true` if logged in
-- Always remind them: "Open the EZ Meals app when it's time to cook — your meals are ready to go."
+- Always close with: **"Your meals are saved! Open the EZ Meals app when it's time to cook — your plan for the week is right there with full instructions."**
 
 ### Weekly Staples (logged-in users)
 If the user mentions weekly groceries, staples, or regular items:

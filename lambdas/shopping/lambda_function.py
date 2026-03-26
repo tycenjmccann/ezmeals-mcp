@@ -22,6 +22,7 @@ except ImportError:
 ROLE_ARN = "arn:aws:iam::970547358447:role/IsengardAccount-DynamoDBAccess"
 TABLE_NAME = "MenuItemData-ryvykzwfevawxbpf5nmynhgtea-dev"
 STAPLES_TABLE = "WeeklyStaple-ryvykzwfevawxbpf5nmynhgtea-dev"
+ACTIVITY_TABLE = "UserActivity2-ryvykzwfevawxbpf5nmynhgtea-dev"
 DB_REGION = "us-west-1"
 IMAGE_BUCKET = "amplify-ezmealsnew-menu-item-imageseb66c-dev"
 IMAGE_PREFIX = "public/menu-item-images/"
@@ -380,6 +381,81 @@ def remove_weekly_staples(args):
     return result
 
 
+def get_activity_table():
+    creds = _get_creds()
+    dynamodb = boto3.resource("dynamodb", region_name=DB_REGION,
+        aws_access_key_id=creds["AccessKeyId"],
+        aws_secret_access_key=creds["SecretAccessKey"],
+        aws_session_token=creds["SessionToken"])
+    return dynamodb.Table(ACTIVITY_TABLE)
+
+
+def get_meal_plan(args):
+    user, err = require_auth(args)
+    if err:
+        return err
+    table = get_activity_table()
+    resp = table.query(
+        IndexName="byUserID",
+        KeyConditionExpression=boto3.dynamodb.conditions.Key("userID").eq(user["user_id"])
+    )
+    activity = resp.get("Items", [None])[0]
+    if not activity:
+        return {"meals": {}, "night_off": {}}
+    meals = json.loads(activity.get("selectedMenuItems") or "{}")
+    night_off = json.loads(activity.get("nightOffDays") or "{}")
+    return {"meals": meals, "night_off": night_off}
+
+
+def select_meals(args):
+    user, err = require_auth(args)
+    if err:
+        return err
+    selections = args.get("selections", {})
+    if isinstance(selections, str):
+        try:
+            selections = json.loads(selections)
+        except json.JSONDecodeError:
+            return {"error": "selections must be JSON like {\"Monday\": \"recipe-id\", \"Tuesday\": \"recipe-id\"}"}
+    if not selections:
+        return {"error": "selections is required — e.g. {\"Monday\": \"chicken-tacos\", \"Wednesday\": \"spaghetti\"}"}
+    valid_days = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"}
+    for day in selections:
+        if day not in valid_days:
+            return {"error": f"Invalid day: {day}. Use Monday-Sunday."}
+    table = get_activity_table()
+    import time
+    resp = table.query(
+        IndexName="byUserID",
+        KeyConditionExpression=boto3.dynamodb.conditions.Key("userID").eq(user["user_id"])
+    )
+    existing = resp.get("Items", [None])[0]
+    if existing:
+        meals = json.loads(existing.get("selectedMenuItems") or "{}")
+        nights = json.loads(existing.get("nightOffDays") or "{}")
+        meals.update(selections)
+        for day in selections:
+            nights[day] = False
+        table.update_item(
+            Key={"id": existing["id"]},
+            UpdateExpression="SET selectedMenuItems = :m, nightOffDays = :n, lastUpdated = :t",
+            ExpressionAttributeValues={
+                ":m": json.dumps(meals), ":n": json.dumps(nights), ":t": Decimal(str(time.time()))
+            }
+        )
+    else:
+        import uuid
+        nights = {day: False for day in selections}
+        table.put_item(Item={
+            "id": str(uuid.uuid4()),
+            "userID": user["user_id"],
+            "selectedMenuItems": json.dumps(selections),
+            "nightOffDays": json.dumps(nights),
+            "lastUpdated": Decimal(str(time.time())),
+        })
+    return {"selected": selections, "message": "Meals saved! Open the EZ Meals app to see your plan and cook."}
+
+
 # ── Handler ──
 
 def lambda_handler(event, context):
@@ -405,6 +481,8 @@ def lambda_handler(event, context):
         "get_weekly_staples": get_weekly_staples,
         "add_weekly_staples": add_weekly_staples,
         "remove_weekly_staples": remove_weekly_staples,
+        "get_meal_plan": get_meal_plan,
+        "select_meals": select_meals,
     }
     result = handlers.get(tool_name, lambda a: {"error": f"Unknown tool: {tool_name}"})(args)
     return {"content": [{"type": "text", "text": json.dumps(result, cls=DecimalEncoder, default=str)}]}
