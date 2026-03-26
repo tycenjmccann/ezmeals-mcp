@@ -425,6 +425,7 @@ def select_meals(args):
             return {"error": f"Invalid day: {day}. Use Monday-Sunday."}
     table = get_activity_table()
     import time
+    from datetime import datetime
     resp = table.query(
         IndexName="byUserID",
         KeyConditionExpression=boto3.dynamodb.conditions.Key("userID").eq(user["user_id"])
@@ -438,20 +439,25 @@ def select_meals(args):
             nights[day] = False
         table.update_item(
             Key={"id": existing["id"]},
-            UpdateExpression="SET selectedMenuItems = :m, nightOffDays = :n, lastUpdated = :t",
+            UpdateExpression="SET selectedMenuItems = :m, nightOffDays = :n, lastUpdated = :t, updatedAt = :u",
             ExpressionAttributeValues={
-                ":m": json.dumps(meals), ":n": json.dumps(nights), ":t": Decimal(str(time.time()))
+                ":m": json.dumps(meals), ":n": json.dumps(nights), ":t": Decimal(str(time.time())),
+                ":u": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z")
             }
         )
     else:
         import uuid
         nights = {day: False for day in selections}
+        now = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z")
         table.put_item(Item={
             "id": str(uuid.uuid4()),
             "userID": user["user_id"],
             "selectedMenuItems": json.dumps(selections),
             "nightOffDays": json.dumps(nights),
             "lastUpdated": Decimal(str(time.time())),
+            "createdAt": now,
+            "updatedAt": now,
+            "__typename": "UserActivity2",
         })
     return {"selected": selections, "message": "Meals saved! Open the EZ Meals app to see your plan and cook."}
 
