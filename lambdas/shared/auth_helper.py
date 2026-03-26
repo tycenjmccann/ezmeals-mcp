@@ -41,8 +41,8 @@ def require_auth(args):
     if not token:
         return None, {
             "error": "authentication_required",
-            "message": "This tool requires an EZ Meals account.",
-            "action": "Call the login tool with your email and password to get an auth_token. No account? Call signup first.",
+            "message": "This tool requires a free EZ Meals account.",
+            "action": "Call the login tool with your email and password to get an auth_token. No account? Call signup first — it's completely free.",
             "guest_tools": ["search_recipes", "browse_cuisines", "signup", "confirm_signup", "login"]
         }
     

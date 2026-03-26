@@ -139,7 +139,7 @@ def search_recipes(args):
     if not is_authenticated:
         resp["guest_mode"] = True
         resp["results_capped_at"] = GUEST_MAX_RESULTS
-        resp["tip"] = "Sign up for unlimited results. Use the signup tool to create a free account."
+        resp["tip"] = "Create a free EZ Meals account for unlimited access — it's free forever. Use the signup tool."
     return resp
 
 
