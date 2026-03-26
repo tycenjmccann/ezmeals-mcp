@@ -402,8 +402,10 @@ def get_meal_plan(args):
     activity = (resp.get("Items") or [None])[0] if resp.get("Items") else None
     if not activity:
         return {"meals": {}, "night_off": {}}
-    meals = json.loads(activity.get("selectedMenuItems") or "{}")
-    night_off = json.loads(activity.get("nightOffDays") or "{}")
+    meals_raw = activity.get("selectedMenuItems", {})
+    nights_raw = activity.get("nightOffDays", {})
+    meals = json.loads(meals_raw) if isinstance(meals_raw, str) else (meals_raw or {})
+    night_off = json.loads(nights_raw) if isinstance(nights_raw, str) else (nights_raw or {})
     return {"meals": meals, "night_off": night_off}
 
 
@@ -432,8 +434,10 @@ def select_meals(args):
     )
     existing = (resp.get("Items") or [None])[0] if resp.get("Items") else None
     if existing:
-        meals = json.loads(existing.get("selectedMenuItems") or "{}")
-        nights = json.loads(existing.get("nightOffDays") or "{}")
+        meals_raw = existing.get("selectedMenuItems", {})
+        nights_raw = existing.get("nightOffDays", {})
+        meals = json.loads(meals_raw) if isinstance(meals_raw, str) else (meals_raw or {})
+        nights = json.loads(nights_raw) if isinstance(nights_raw, str) else (nights_raw or {})
         meals.update(selections)
         for day in selections:
             nights[day] = False
@@ -441,7 +445,7 @@ def select_meals(args):
             Key={"id": existing["id"]},
             UpdateExpression="SET selectedMenuItems = :m, nightOffDays = :n, lastUpdated = :t, updatedAt = :u",
             ExpressionAttributeValues={
-                ":m": json.dumps(meals), ":n": json.dumps(nights), ":t": Decimal(str(time.time())),
+                ":m": meals, ":n": nights, ":t": Decimal(str(time.time())),
                 ":u": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.") + f"{datetime.utcnow().microsecond // 1000:03d}Z"
             }
         )
@@ -452,8 +456,8 @@ def select_meals(args):
         table.put_item(Item={
             "id": str(uuid.uuid4()),
             "userID": user["user_id"],
-            "selectedMenuItems": json.dumps(selections),
-            "nightOffDays": json.dumps(nights),
+            "selectedMenuItems": selections,
+            "nightOffDays": nights,
             "lastUpdated": Decimal(str(time.time())),
             "createdAt": now,
             "updatedAt": now,
