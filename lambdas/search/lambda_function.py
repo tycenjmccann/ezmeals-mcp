@@ -112,8 +112,8 @@ def search_recipes(args):
 
     # Build filter expression
     filters = []
-    # Only main dishes by default
-    filters.append(Attr("dishType").eq("main"))
+    # Main dishes and combos (exclude sides)
+    filters.append(Attr("dishType").is_in(["main", "combo"]))
 
     if cuisine and cuisine != "Global Cuisines":
         filters.append(Attr("cuisineType").eq(cuisine))
@@ -150,7 +150,7 @@ def search_recipes(args):
 
 def browse_cuisines(args):
     table = get_table()
-    items = scan_all(table, FilterExpression=Attr("dishType").eq("main"),
+    items = scan_all(table, FilterExpression=Attr("dishType").is_in(["main", "combo"]),
                      ProjectionExpression="cuisineType")
     counts = {}
     for item in items:
