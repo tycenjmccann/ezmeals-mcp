@@ -109,9 +109,15 @@ def _compute_time_flags(prep, cook):
 
 
 def create_recipe(args):
-    """Create a user recipe from text. Formats via Bedrock, saves to DynamoDB."""
+    """Create a user recipe from text. Requires auth. Formats via Bedrock, saves to DynamoDB."""
+    from auth_helper import require_auth
+
+    user, auth_error = require_auth(args)
+    if auth_error:
+        return auth_error
+
     recipe_text = args.get("recipe_text", "").strip()
-    user_id = args.get("user_id", "mcp-user")
+    user_id = user["user_id"]
 
     if not recipe_text:
         return {"error": "recipe_text is required — provide a full recipe or describe what you want to create"}
