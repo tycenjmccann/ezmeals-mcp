@@ -173,7 +173,7 @@ def _call_instacart(endpoint, payload):
 def _append_affiliate(url):
     if IMPACT_PARTNER_ID and url:
         sep = "&" if "?" in url else "?"
-        url += f"{sep}utm_campaign=instacart-idp&utm_medium=affiliate&utm_source=instacart_idp&utm_term=partnertype-mediapartner&utm_content=campaignid-20313_partnerid-{IMPACT_PARTNER_ID}"
+        url += f"{sep}irmp={IMPACT_PARTNER_ID}&irad=1744632"
     return url
 
 
