@@ -27,6 +27,7 @@ DB_REGION = "us-west-1"
 IMAGE_BUCKET = "amplify-ezmealsnew-menu-item-imageseb66c-dev"
 IMAGE_PREFIX = "public/menu-item-images/"
 INSTACART_API_KEY = os.environ.get("INSTACART_API_KEY", "")
+WORDPRESS_ENDPOINT = "https://www.ezmeals.org/wp-json/ezmeals/v1/create-recipe"
 INSTACART_BASE_URL = os.environ.get("INSTACART_BASE_URL", "https://connect.dev.instacart.tools/idp/v1")
 IMPACT_PARTNER_ID = os.environ.get("IMPACT_PARTNER_ID", "")
 
@@ -466,6 +467,47 @@ def select_meals(args):
     return {"selected": selections, "message": "Meals saved! Open the EZ Meals app to see your plan and cook."}
 
 
+def create_other_stores_cart(args):
+    """Create a shopping page for Whole Foods, Amazon Fresh, Walmart, Kroger via Chicory."""
+    recipe_ids = _parse_csv(args.get("recipe_ids", ""))
+    if not recipe_ids:
+        return {"error": "recipe_ids is required"}
+
+    exclude_cats = _parse_csv(args.get("exclude_categories", ""))
+    ingredients = get_ingredients_for_recipes(recipe_ids)
+    consolidated = consolidate_ingredients(ingredients, exclude_cats)
+
+    # Format as simple ingredient strings for WordPress/Chicory
+    ingredient_strings = []
+    for ing in consolidated:
+        parts = []
+        if ing["quantity"]:
+            parts.append(ing["quantity"])
+        if ing["unit"]:
+            parts.append(ing["unit"])
+        parts.append(ing["ingredient_name"])
+        ingredient_strings.append(" ".join(parts))
+
+    # Call WordPress endpoint
+    body = json.dumps({"ingredients": ingredient_strings}).encode("utf-8")
+    req = urllib.request.Request(
+        WORDPRESS_ENDPOINT, data=body,
+        headers={"Content-Type": "application/json", "Accept": "application/json"},
+        method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            url = data.get("url", "")
+            return {
+                "shopping_page_url": url,
+                "ingredient_count": len(ingredient_strings),
+                "stores": "Whole Foods, Amazon Fresh, Walmart, Kroger and more",
+                "instructions": "Click 'Get Ingredients' on the page, then select your preferred store.",
+            }
+    except Exception as e:
+        return {"error": f"Failed to create shopping page: {str(e)}"}
+
+
 # ── Handler ──
 
 def lambda_handler(event, context):
@@ -493,6 +535,7 @@ def lambda_handler(event, context):
         "remove_weekly_staples": remove_weekly_staples,
         "get_meal_plan": get_meal_plan,
         "select_meals": select_meals,
+        "create_other_stores_cart": create_other_stores_cart,
     }
     result = handlers.get(tool_name, lambda a: {"error": f"Unknown tool: {tool_name}"})(args)
     return {"content": [{"type": "text", "text": json.dumps(result, cls=DecimalEncoder, default=str)}]}
